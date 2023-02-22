@@ -56,6 +56,10 @@ struct Args {
     consultation: Option<String>,
     #[structopt(flatten)]
     app_args: map_gui::SimpleAppArgs,
+
+    // Tutorial arg
+    #[structopt(long)]
+    tutorial: Option<String>,
 }
 
 const SPRITE_WIDTH: u32 = 750;
