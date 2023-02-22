@@ -59,7 +59,7 @@ struct Args {
 
     // Tutorial arg
     #[structopt(long)]
-    tutorial: Option<String>,
+    tutorial: Option<bool>,
 }
 
 const SPRITE_WIDTH: u32 = 750;
