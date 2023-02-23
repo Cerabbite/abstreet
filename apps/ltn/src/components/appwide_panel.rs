@@ -72,6 +72,8 @@ impl AppwidePanel {
                     ctx, app,
                 ))),
                 "Predict impact" => Some(launch_impact(ctx, app)),
+                // MARKER
+                "Tutorial" => Some(launch_tutorial(ctx, app)),
                 _ => unreachable!(),
             };
         }
@@ -95,6 +97,28 @@ impl AppwidePanel {
         self.top_panel.draw(g);
         self.left_panel.draw(g);
     }
+}
+
+fn launch_tutorial(ctx: &mut EventCtx, app: &mut App) -> Transition {
+    if &app.per_map.impact.map == app.per_map.map.get_name()
+        && app.per_map.impact.change_key == app.edits().get_change_key()
+    {
+        return Transition::Replace(crate::impact::ShowResults::new_state(ctx, app));
+    }
+
+    Transition::Push(ChooseSomething::new_state(ctx,
+        "Tutorial is experimental. You have to interpret the results carefully. The app may also freeze while calculating this.",
+        Choice::strings(vec!["Never mind", "I understand the warnings. Predict impact!"]),
+        Box::new(|choice, ctx, app| {
+            if choice == "Never mind" {
+                Transition::Pop
+            } else {
+                Transition::Multi(vec![
+                                  Transition::Pop,
+                                  Transition::Replace(crate::impact::ShowResults::new_state(ctx, app)),
+                ])
+            }
+        })))
 }
 
 fn launch_impact(ctx: &mut EventCtx, app: &mut App) -> Transition {
@@ -183,6 +207,11 @@ fn make_top_panel(ctx: &mut EventCtx, app: &App, mode: Mode) -> Panel {
                     .disabled(app.per_map.consultation.is_some())
                     .disabled_tooltip("Not supported here yet")
                     .build_def(ctx)
+            },
+            if mode == Mode::Tutorial {
+                current_mode(ctx, "Tutorial")
+            } else {
+                ctx.style().btn_outline.text("Tutorial").build_def(ctx)
             },
         ])
         .centered_vert()

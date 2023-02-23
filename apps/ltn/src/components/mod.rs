@@ -17,4 +17,5 @@ pub enum Mode {
     RoutePlanner,
     Crossings,
     Impact,
+    Tutorial,
 }

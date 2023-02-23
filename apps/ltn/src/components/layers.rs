@@ -376,6 +376,7 @@ impl Mode {
                 map_gui::tools::compare_counts::CompareCounts::relative_scale()
                     .make_legend(ctx, vec!["less", "same", "more"]),
             ],
+            Mode::Tutorial => vec![],
         })
     }
 }
