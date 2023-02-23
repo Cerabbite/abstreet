@@ -6,6 +6,7 @@ use widgetry::{
 };
 
 use crate::components::Mode;
+use crate::tutorial;
 use crate::{App, PickArea, Transition};
 
 /// Both the top panel and the collapsible left sidebar.
@@ -100,25 +101,31 @@ impl AppwidePanel {
 }
 
 fn launch_tutorial(ctx: &mut EventCtx, app: &mut App) -> Transition {
+    tutorial::tutorial();
     if &app.per_map.impact.map == app.per_map.map.get_name()
         && app.per_map.impact.change_key == app.edits().get_change_key()
     {
         return Transition::Replace(crate::impact::ShowResults::new_state(ctx, app));
     }
 
-    Transition::Push(ChooseSomething::new_state(ctx,
-        "Tutorial is experimental. You have to interpret the results carefully. The app may also freeze while calculating this.",
-        Choice::strings(vec!["Never mind", "I understand the warnings. Predict impact!"]),
+    Transition::Push(ChooseSomething::new_state(
+        ctx,
+        "Welcome to Bristel Liveable Neighbourhood!",
+        Choice::strings(vec![
+            "Never mind",
+            "I understand the warnings. Predict impact!",
+        ]),
         Box::new(|choice, ctx, app| {
             if choice == "Never mind" {
                 Transition::Pop
             } else {
                 Transition::Multi(vec![
-                                  Transition::Pop,
-                                  Transition::Replace(crate::impact::ShowResults::new_state(ctx, app)),
+                    Transition::Pop,
+                    Transition::Replace(crate::impact::ShowResults::new_state(ctx, app)),
                 ])
             }
-        })))
+        }),
+    ))
 }
 
 fn launch_impact(ctx: &mut EventCtx, app: &mut App) -> Transition {

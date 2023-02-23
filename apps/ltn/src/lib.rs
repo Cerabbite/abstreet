@@ -39,6 +39,7 @@ mod route_planner;
 mod save;
 mod select_boundary;
 mod shortcuts;
+mod tutorial;
 
 pub fn main() {
     let settings = Settings::new("Low traffic neighbourhoods");
