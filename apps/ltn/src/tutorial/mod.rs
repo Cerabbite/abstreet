@@ -1,13 +1,12 @@
 use crate::components::AppwidePanel;
-use crate::App;
-use widgetry::State;
+use widgetry::{tools::PopupMsg, EventCtx, Line, State, Text};
 
 pub struct Tutorial {
     appwide_panel: AppwidePanel,
 }
 
 impl Tutorial {
-    pub fn new_state() -> Box<dyn State<App>> {}
+    pub fn new_state<A>(ctx: &mut EventCtx) -> Box<dyn State<A>> {}
 }
 
 /*
@@ -21,4 +20,10 @@ To achieve the grayed out except for 1 part I can render that part of the popup/
         It looks like it does not do that.
 
 Event checking. AKA make sure the user has done what it is supposed to do before continueing the tutorial (or next button has to be pressed)
+
+
+I could just implement my own popups which also take in a position and then just mask out
+whatever the user is supposed to focus on.
+
+I currently have no idea on how to achieve the Arrow Boxes
 */
