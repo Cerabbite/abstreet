@@ -8,6 +8,7 @@ mod pick_area;
 mod predict_impact;
 mod route_planner;
 mod select_boundary;
+mod tutorial;
 
 pub use about::About;
 pub use crossings::Crossings;
@@ -19,3 +20,4 @@ pub use pick_area::{PickArea, PickAreaStyle};
 pub use predict_impact::ShowImpactResults;
 pub use route_planner::RoutePlanner;
 pub use select_boundary::SelectBoundary;
+pub use tutorial::Tutorial;

@@ -43,6 +43,9 @@ struct Args {
     consultation: Option<String>,
     #[structopt(flatten)]
     app_args: map_gui::SimpleAppArgs,
+
+    #[structopt(long, name = "start-tutorial")]
+    start_tutorial: Option<bool>,
 }
 
 const SPRITE_WIDTH: u32 = 750;
@@ -64,6 +67,24 @@ fn run(mut settings: Settings) {
 
     let args = Args::from_iter(abstutil::cli_args());
     args.app_args.override_options(&mut opts);
+
+    let tutorial: bool;
+    match args.start_tutorial {
+        Some(value) => {
+            if value {
+                tutorial = true
+            } else {
+                tutorial = false
+            }
+        }
+        None => tutorial = false,
+    }
+
+    // TEMP: Printing the tutorial value
+    println!("{}", tutorial);
+
+    // TODO: Make the popup display if the tutorial value
+    //       is true.
 
     settings = settings.load_default_textures(false);
     settings = args
@@ -92,17 +113,28 @@ fn run(mut settings: Settings) {
                 if let Some(ref name) = args.proposal {
                     // Remote edits require another intermediate state to load
                     if let Some(id) = name.strip_prefix("remote/") {
-                        vec![load_remote(ctx, id.to_string(), args.consultation.clone())]
+                        vec![load_remote(
+                            ctx,
+                            id.to_string(),
+                            args.consultation.clone(),
+                            tutorial,
+                        )]
                     } else {
                         let popup_state = crate::save::Proposal::load_from_path(
                             ctx,
                             app,
                             abstio::path_ltn_proposals(app.per_map.map.get_name(), name),
                         );
-                        setup_initial_states(ctx, app, args.consultation.as_ref(), popup_state)
+                        setup_initial_states(
+                            ctx,
+                            app,
+                            args.consultation.as_ref(),
+                            tutorial,
+                            popup_state,
+                        )
                     }
                 } else {
-                    setup_initial_states(ctx, app, args.consultation.as_ref(), None)
+                    setup_initial_states(ctx, app, args.consultation.as_ref(), tutorial, None)
                 }
             },
         )
@@ -114,6 +146,7 @@ fn setup_initial_states(
     ctx: &mut EventCtx,
     app: &mut App,
     consultation: Option<&String>,
+    tutorial: bool,
     popup_state: Option<Box<dyn State<App>>>,
 ) -> Vec<Box<dyn State<App>>> {
     let mut states = Vec::new();
@@ -174,6 +207,8 @@ fn setup_initial_states(
             app,
             app.per_map.consultation.unwrap(),
         ));
+    } else if tutorial == true {
+        states.push(pages::tutorial::new_state(ctx, app))
     } else {
         states.push(pages::PickArea::new_state(ctx, app));
     }
@@ -187,6 +222,7 @@ fn load_remote(
     ctx: &mut EventCtx,
     id: String,
     consultation: Option<String>,
+    tutorial: bool,
 ) -> Box<dyn State<App>> {
     let (_, outer_progress_rx) = futures_channel::mpsc::channel(1);
     let (_, inner_progress_rx) = futures_channel::mpsc::channel(1);
@@ -207,6 +243,7 @@ fn load_remote(
                 ctx,
                 app,
                 consultation.as_ref(),
+                tutorial,
                 popup_state,
             ))
         }),
