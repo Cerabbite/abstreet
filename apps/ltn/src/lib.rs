@@ -45,7 +45,7 @@ struct Args {
     app_args: map_gui::SimpleAppArgs,
 
     #[structopt(long, name = "start-tutorial")]
-    start_tutorial: Option<bool>,
+    start_tutorial: bool,
 }
 
 const SPRITE_WIDTH: u32 = 750;
@@ -67,21 +67,6 @@ fn run(mut settings: Settings) {
 
     let args = Args::from_iter(abstutil::cli_args());
     args.app_args.override_options(&mut opts);
-
-    let tutorial: bool;
-    match args.start_tutorial {
-        Some(value) => {
-            if value {
-                tutorial = true
-            } else {
-                tutorial = false
-            }
-        }
-        None => tutorial = false,
-    }
-
-    // TEMP: Printing the tutorial value
-    println!("{}", tutorial);
 
     // TODO: Make the popup display if the tutorial value
     //       is true.
@@ -117,7 +102,7 @@ fn run(mut settings: Settings) {
                             ctx,
                             id.to_string(),
                             args.consultation.clone(),
-                            tutorial,
+                            args.start_tutorial,
                         )]
                     } else {
                         let popup_state = crate::save::Proposal::load_from_path(
@@ -129,12 +114,18 @@ fn run(mut settings: Settings) {
                             ctx,
                             app,
                             args.consultation.as_ref(),
-                            tutorial,
+                            args.start_tutorial,
                             popup_state,
                         )
                     }
                 } else {
-                    setup_initial_states(ctx, app, args.consultation.as_ref(), tutorial, None)
+                    setup_initial_states(
+                        ctx,
+                        app,
+                        args.consultation.as_ref(),
+                        args.start_tutorial,
+                        None,
+                    )
                 }
             },
         )
