@@ -8,7 +8,7 @@ use map_gui::render::{DrawMap, DrawOptions};
 use map_gui::tools::CameraState;
 use map_gui::tools::DrawSimpleRoadLabels;
 use map_gui::{AppLike, ID};
-use map_model::{CrossingType, IntersectionID, Map, RoutingParams};
+use map_model::{osm, CrossingType, IntersectionID, Map, RoutingParams};
 use widgetry::tools::URLManager;
 use widgetry::{Canvas, Drawable, EventCtx, GfxCtx, SharedAppState, State, Warper};
 
@@ -43,8 +43,8 @@ pub struct PerMap {
     pub consultation_id: Option<String>,
 
     pub draw_all_filters: render::Toggle3Zoomed,
-    pub draw_major_road_labels: Option<DrawSimpleRoadLabels>,
-    pub draw_all_road_labels: Option<DrawSimpleRoadLabels>,
+    pub draw_major_road_labels: DrawSimpleRoadLabels,
+    pub draw_all_local_road_labels: Option<DrawSimpleRoadLabels>,
     pub draw_poi_icons: Drawable,
     pub draw_bus_routes: Drawable,
 
@@ -54,16 +54,31 @@ pub struct PerMap {
 impl PerMap {
     fn new(
         ctx: &mut EventCtx,
-        map: Map,
+        mut map: Map,
         opts: &Options,
         cs: &ColorScheme,
         timer: &mut Timer,
     ) -> Self {
+        // Do this before creating the default partitioning. Non-driveable roads in OSM get turned
+        // into driveable roads and a filter here, and we want the partitioning to "see" those
+        // roads.
+        let edits = logic::transform_existing_filters(&mut map, timer);
+        let mut proposals = crate::save::Proposals::new(&map, edits, timer);
+
+        let mut routing_params_before_changes = map.routing_params().clone();
+        proposals
+            .current_proposal
+            .edits
+            .update_routing_params(&mut routing_params_before_changes);
+
+        let draw_all_filters = proposals.current_proposal.edits.draw(ctx, &map);
+
+        logic::populate_existing_crossings(&map, &mut proposals.current_proposal.edits);
+
+        // Create DrawMap after transform_existing_filters, which modifies road widths
         let draw_map = DrawMap::new(ctx, &map, opts, cs, timer);
         let draw_poi_icons = render::render_poi_icons(ctx, &map);
         let draw_bus_routes = render::render_bus_routes(ctx, &map);
-
-        let proposals = crate::save::Proposals::new(&map, timer);
 
         let per_map = Self {
             map,
@@ -71,16 +86,16 @@ impl PerMap {
 
             current_neighbourhood: None,
 
-            routing_params_before_changes: RoutingParams::default(),
+            routing_params_before_changes,
             proposals,
             impact: logic::Impact::empty(ctx),
 
             consultation: None,
             consultation_id: None,
 
-            draw_all_filters: render::Toggle3Zoomed::empty(ctx),
-            draw_major_road_labels: None,
-            draw_all_road_labels: None,
+            draw_all_filters,
+            draw_major_road_labels: DrawSimpleRoadLabels::empty(ctx),
+            draw_all_local_road_labels: None,
             draw_poi_icons,
             draw_bus_routes,
 
@@ -109,6 +124,8 @@ pub struct Session {
     // Plan a route:
     pub main_road_penalty: f64,
     pub show_walking_cycling_routes: bool,
+    // Select boundary:
+    pub add_intermediate_blocks: bool,
 
     // Shared in all modes
     pub layers: crate::components::Layers,
@@ -148,18 +165,9 @@ impl AppLike for App {
     fn map_switched(&mut self, ctx: &mut EventCtx, map: Map, timer: &mut Timer) {
         CameraState::save(ctx.canvas, self.per_map.map.get_name());
         self.per_map = PerMap::new(ctx, map, &self.opts, &self.cs, timer);
+        self.per_map.draw_major_road_labels =
+            DrawSimpleRoadLabels::only_major_roads(ctx, self, render::colors::MAIN_ROAD_LABEL);
         self.opts.units.metric = self.per_map.map.get_name().city.uses_metric();
-
-        // These two logically belong in PerMap::new, but it's easier to have the full App
-        logic::transform_existing_filters(ctx, self, timer);
-        self.per_map.draw_all_filters = self
-            .per_map
-            .proposals
-            .current_proposal
-            .edits
-            .draw(ctx, &self.per_map.map);
-
-        logic::populate_existing_crossings(self);
     }
 
     fn draw_with_opts(&self, g: &mut GfxCtx, _l: DrawOptions) {
@@ -223,6 +231,7 @@ impl App {
             draw_neighbourhood_style: pages::PickAreaStyle::Simple,
             main_road_penalty: 1.0,
             show_walking_cycling_routes: false,
+            add_intermediate_blocks: true,
 
             layers: crate::components::Layers::new(ctx),
             manage_proposals: false,
@@ -277,6 +286,17 @@ impl App {
     }
     pub fn partitioning(&self) -> &Partitioning {
         &self.per_map.proposals.current_proposal.partitioning
+    }
+
+    pub fn calculate_draw_all_local_road_labels(&mut self, ctx: &mut EventCtx) {
+        if self.per_map.draw_all_local_road_labels.is_none() {
+            self.per_map.draw_all_local_road_labels = Some(DrawSimpleRoadLabels::new(
+                ctx,
+                self,
+                render::colors::LOCAL_ROAD_LABEL,
+                Box::new(|r| r.get_rank() == osm::RoadRank::Local && !r.is_light_rail()),
+            ));
+        }
     }
 }
 

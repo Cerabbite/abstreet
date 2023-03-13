@@ -1,6 +1,8 @@
 mod perma;
 mod share;
 
+use std::collections::BTreeSet;
+
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
@@ -368,7 +370,8 @@ pub struct Proposals {
 }
 
 impl Proposals {
-    pub fn new(map: &Map, timer: &mut Timer) -> Self {
+    // This calculates partitioning, which is expensive
+    pub fn new(map: &Map, edits: Edits, timer: &mut Timer) -> Self {
         Self {
             list: vec![None],
             current: 0,
@@ -378,7 +381,7 @@ impl Proposals {
                 name: "existing LTNs".to_string(),
                 abst_version: map_gui::tools::version().to_string(),
                 partitioning: Partitioning::seed_using_heuristics(map, timer),
-                edits: Edits::default(),
+                edits,
                 unsaved_parent: None,
             },
         }
@@ -598,8 +601,9 @@ pub enum PreserveState {
     Route,
     Crossings,
     // TODO app.session.edit_mode now has state for Shortcuts...
-    DesignLTN(Vec<BlockID>),
-    PerResidentImpact(Vec<BlockID>, Option<BuildingID>),
+    DesignLTN(BTreeSet<BlockID>),
+    PerResidentImpact(BTreeSet<BlockID>, Option<BuildingID>),
+    CycleNetwork,
 }
 
 impl PreserveState {
@@ -638,6 +642,9 @@ impl PreserveState {
                     count.max_key(),
                     *current_target,
                 ))
+            }
+            PreserveState::CycleNetwork => {
+                Transition::Replace(pages::CycleNetwork::new_state(ctx, app))
             }
         }
     }

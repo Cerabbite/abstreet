@@ -2,8 +2,7 @@ use std::collections::{BTreeMap, BTreeSet, BinaryHeap};
 
 use abstutil::PriorityQueueItem;
 use geom::{Circle, Duration};
-use map_gui::tools::DrawSimpleRoadLabels;
-use map_model::{CrossingType, RoadID};
+use map_model::{osm, CrossingType, RoadID};
 use widgetry::mapspace::{DrawCustomUnzoomedShapes, ObjectID, PerZoom, World, WorldOutcome};
 use widgetry::{
     lctrl, Color, ControlState, Drawable, EventCtx, GeomBatch, GfxCtx, Key, Line, Outcome, Panel,
@@ -18,7 +17,6 @@ pub struct Crossings {
     appwide_panel: AppwidePanel,
     bottom_panel: Panel,
     world: World<Obj>,
-    labels: DrawSimpleRoadLabels,
     draw_porosity: Drawable,
     draw_crossings: Toggle3Zoomed,
     draw_nearest_crossing: Option<Drawable>,
@@ -40,7 +38,6 @@ impl Crossings {
             appwide_panel,
             bottom_panel,
             world: World::new(),
-            labels: DrawSimpleRoadLabels::only_major_roads(ctx, app, colors::ROAD_LABEL),
             draw_porosity: Drawable::empty(ctx),
             draw_crossings: Toggle3Zoomed::empty(ctx),
             draw_nearest_crossing: None,
@@ -161,7 +158,7 @@ impl State<App> for Crossings {
         self.bottom_panel.draw(g);
         app.session.layers.draw(g, app);
         g.redraw(&self.draw_porosity);
-        self.labels.draw(g);
+        app.per_map.draw_major_road_labels.draw(g);
         app.per_map.draw_poi_icons.draw(g);
         if let Some(ref draw) = self.draw_nearest_crossing {
             g.redraw(draw);
@@ -183,11 +180,11 @@ fn help() -> Vec<&'static str> {
     ]
 }
 
-fn boundary_roads(app: &App) -> BTreeSet<RoadID> {
+fn main_roads(app: &App) -> BTreeSet<RoadID> {
     let mut result = BTreeSet::new();
-    for info in app.partitioning().all_neighbourhoods().values() {
-        for id in &info.block.perimeter.roads {
-            result.insert(id.road);
+    for r in app.per_map.map.all_roads() {
+        if r.get_rank() != osm::RoadRank::Local && !r.is_light_rail() {
+            result.insert(r.id);
         }
     }
     result
@@ -202,7 +199,7 @@ fn draw_crossings(ctx: &EventCtx, app: &App) -> Toggle3Zoomed {
         icons.insert(ct, GeomBatch::load_svg(ctx, Crossings::svg_path(ct)));
     }
 
-    for r in boundary_roads(app) {
+    for r in main_roads(app) {
         if let Some(list) = app.edits().crossings.get(&r) {
             let road = app.per_map.map.get_r(r);
             for crossing in list {
@@ -267,7 +264,7 @@ fn make_world(
 ) -> World<Obj> {
     let mut world = World::new();
 
-    for r in boundary_roads(app) {
+    for r in main_roads(app) {
         let road = app.per_map.map.get_r(r);
 
         if let Some(list) = app.edits().crossings.get(&r) {
@@ -364,10 +361,10 @@ fn make_bottom_panel(ctx: &mut EventCtx, app: &App) -> Widget {
             .build_widget(ctx, name)
     };
 
-    let boundary_roads = boundary_roads(app);
+    let main_roads = main_roads(app);
     let mut total_crossings = 0;
     for (r, list) in &app.edits().crossings {
-        if boundary_roads.contains(r) {
+        if main_roads.contains(r) {
             total_crossings += list.len();
         }
     }
@@ -392,16 +389,16 @@ fn make_bottom_panel(ctx: &mut EventCtx, app: &App) -> Widget {
 }
 
 fn draw_nearest_crossing(ctx: &EventCtx, app: &App) -> (Drawable, BTreeMap<RoadID, Duration>) {
-    // Consider the undirected graph of boundary roads. Floodfill from each crossing and count the
+    // Consider the undirected graph of main roads. Floodfill from each crossing and count the
     // walking time to the nearest crossing, at road segment granularity.
     //
     // Note this is weird -- the nearest crossing might not be in the direction someone wants to
     // go!
-    let boundary_roads = boundary_roads(app);
+    let main_roads = main_roads(app);
 
     let mut queue: BinaryHeap<PriorityQueueItem<Duration, RoadID>> = BinaryHeap::new();
 
-    for r in &boundary_roads {
+    for r in &main_roads {
         if app.edits().crossings.contains_key(r) {
             queue.push(PriorityQueueItem {
                 cost: Duration::ZERO,
@@ -417,9 +414,9 @@ fn draw_nearest_crossing(ctx: &EventCtx, app: &App) -> (Drawable, BTreeMap<RoadI
         }
         cost_per_node.insert(current.value, current.cost);
 
-        // Walk to all boundary roads connected at either endpoint
+        // Walk to all main roads connected at either endpoint
         for next in app.per_map.map.get_next_roads(current.value) {
-            if boundary_roads.contains(&next) {
+            if main_roads.contains(&next) {
                 let cost = app.per_map.map.get_r(next).length() / map_model::MAX_WALKING_SPEED;
                 queue.push(PriorityQueueItem {
                     cost: current.cost + cost,

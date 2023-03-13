@@ -20,7 +20,6 @@ pub struct Layers {
     // (Mode, max zoom, min zoom, bottom bar position)
     panel_cache_key: (Mode, bool, bool, Option<f64>),
     show_bus_routes: bool,
-    pub show_main_roads: bool,
     pub show_crossing_time: bool,
 
     // For the design LTN mode
@@ -36,7 +35,6 @@ impl Layers {
             minimized: true,
             panel_cache_key: (Mode::Impact, false, false, None),
             show_bus_routes: false,
-            show_main_roads: false,
             show_crossing_time: false,
             autofix_bus_gates: false,
             autofix_one_ways: false,
@@ -75,10 +73,6 @@ impl Layers {
                     self.show_bus_routes = self.panel.is_checked(&x);
                     self.update_panel(ctx, cs, bottom_panel);
                     return Some(Transition::Keep);
-                } else if x == "show main roads" {
-                    self.show_main_roads = self.panel.is_checked(&x);
-                    self.update_panel(ctx, cs, bottom_panel);
-                    return Some(Transition::Recreate);
                 } else if x == "show time to nearest crossing" {
                     self.show_crossing_time = self.panel.is_checked(&x);
                     self.update_panel(ctx, cs, bottom_panel);
@@ -131,6 +125,16 @@ impl Layers {
     ) {
         self.minimized = false;
         self.show_bus_routes = true;
+        self.update_panel(ctx, cs, bottom_panel);
+    }
+
+    pub fn show_panel(
+        &mut self,
+        ctx: &mut EventCtx,
+        cs: &ColorScheme,
+        bottom_panel: Option<&Panel>,
+    ) {
+        self.minimized = false;
         self.update_panel(ctx, cs, bottom_panel);
     }
 
@@ -267,28 +271,17 @@ impl Mode {
 
         Widget::col(match self {
             Mode::PickArea => vec![
-                Toggle::switch(ctx, "show main roads", None, layers.show_main_roads),
-                if layers.show_main_roads {
-                    entry_tooltip(
-                        ctx,
-                        colors::HIGHLIGHT_BOUNDARY,
-                        "main road",
-                        "Classified as non-local, designed for through-traffic",
-                    )
-                } else {
-                    entry_tooltip(ctx, colors::HIGHLIGHT_BOUNDARY, "boundary road", "Currently used as a boundary for a neighbourhood in this tool. May not be a main road.")
-                },
                 entry_tooltip(
                     ctx,
-                    Color::YELLOW.alpha(0.2),
-                    "regular neighbourhood",
-                    "The boundary has main roads on all sides",
+                    Color::BLACK,
+                    "main road",
+                    "Classified as non-local, designed for through-traffic",
                 ),
                 entry_tooltip(
                     ctx,
-                    Color::YELLOW.alpha(0.1),
-                    "neighbourhood with partial boundary",
-                    "The boundary has a local street on some side",
+                    Color::YELLOW.alpha(0.2),
+                    "neighbourhood",
+                    "Analyze through-traffic here",
                 ),
             ],
             Mode::ModifyNeighbourhood => vec![
@@ -345,19 +338,7 @@ impl Mode {
                     layers.autofix_one_ways,
                 ),
             ],
-            Mode::SelectBoundary => vec![
-                entry(ctx, colors::HIGHLIGHT_BOUNDARY, "boundary road"),
-                entry(
-                    ctx,
-                    colors::BLOCK_IN_BOUNDARY,
-                    "block part of current neighbourhood",
-                ),
-                entry(
-                    ctx,
-                    colors::BLOCK_IN_FRONTIER,
-                    "block could be added to current neighbourhood",
-                ),
-            ],
+            Mode::SelectBoundary => vec![],
             Mode::FreehandBoundary => vec![],
             Mode::PerResidentImpact => vec![],
             Mode::RoutePlanner => vec![
@@ -374,7 +355,6 @@ impl Mode {
                 entry(ctx, *colors::PLAN_ROUTE_BIKE, "cycling route"),
                 // TODO Should we invert text color? This gets hard to read
                 entry(ctx, *colors::PLAN_ROUTE_WALK, "walking route"),
-                // TODO Highlighted roads are boundaries (or main?) roads
             ],
             Mode::Crossings => vec![
                 Widget::row(vec![
@@ -399,12 +379,30 @@ impl Mode {
                 map_gui::tools::compare_counts::CompareCounts::relative_scale()
                     .make_legend(ctx, vec!["less", "same", "more"]),
             ],
+            Mode::CycleNetwork => vec![
+                entry(
+                    ctx,
+                    *colors::NETWORK_SEGREGATED_LANE,
+                    "segregated cycle lane",
+                ),
+                entry(ctx, *colors::NETWORK_QUIET_STREET, "quiet local street"),
+                entry(
+                    ctx,
+                    *colors::NETWORK_PAINTED_LANE,
+                    "painted cycle lane or shared bus lane",
+                ),
+                entry(
+                    ctx,
+                    *colors::NETWORK_THROUGH_TRAFFIC_STREET,
+                    "local street with cut-through traffic",
+                ),
+            ],
         })
     }
 }
 
 fn entry_builder<'a, 'c>(color: Color, label: &'static str) -> ButtonBuilder<'a, 'c> {
-    ButtonBuilder::new()
+    let mut btn = ButtonBuilder::new()
         .label_text(label)
         .bg_color(color, ControlState::Disabled)
         .disabled(true)
@@ -414,11 +412,19 @@ fn entry_builder<'a, 'c>(color: Color, label: &'static str) -> ButtonBuilder<'a,
             left: 20.0,
             right: 20.0,
         })
-        .corner_rounding(0.0)
+        .corner_rounding(0.0);
+    if color == Color::BLACK {
+        btn = btn.label_color(Color::WHITE, ControlState::Disabled);
+    }
+    btn
 }
 
-fn entry(ctx: &mut EventCtx, color: Color, label: &'static str) -> Widget {
+fn entry(ctx: &EventCtx, color: Color, label: &'static str) -> Widget {
     entry_builder(color, label).build_def(ctx)
+}
+
+pub fn legend_entry(ctx: &EventCtx, color: Color, label: &'static str) -> Widget {
+    entry(ctx, color, label)
 }
 
 fn entry_tooltip(
