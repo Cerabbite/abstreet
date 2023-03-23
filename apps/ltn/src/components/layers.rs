@@ -36,6 +36,7 @@ impl Layers {
             panel_cache_key: (Mode::Impact, false, false, None),
             show_bus_routes: false,
             show_crossing_time: false,
+
             autofix_bus_gates: false,
             autofix_one_ways: false,
         }
@@ -397,6 +398,7 @@ impl Mode {
                     "local street with cut-through traffic",
                 ),
             ],
+            Mode::Census => vec![],
         })
     }
 }

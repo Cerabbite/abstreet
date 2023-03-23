@@ -17,4 +17,5 @@ pub enum Mode {
     Crossings,
     Impact,
     CycleNetwork,
+    Census,
 }

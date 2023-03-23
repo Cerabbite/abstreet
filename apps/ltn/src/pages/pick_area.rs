@@ -70,6 +70,7 @@ impl State<App> for PickArea {
         {
             return t;
         }
+
         if let Outcome::Clicked(x) = self.bottom_panel.event(ctx) {
             if x == "Change draw style" {
                 return change_draw_style(ctx);

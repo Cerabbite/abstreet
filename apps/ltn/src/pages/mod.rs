@@ -1,4 +1,5 @@
 mod about;
+mod census;
 mod crossings;
 mod customize_boundary;
 mod cycle_network;
@@ -12,6 +13,7 @@ mod select_boundary;
 mod tutorial;
 
 pub use about::About;
+pub use census::Census;
 pub use crossings::Crossings;
 pub use customize_boundary::CustomizeBoundary;
 pub use cycle_network::CycleNetwork;

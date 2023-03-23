@@ -4,6 +4,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
 
 use anyhow::Result;
 use petgraph::graphmap::{DiGraphMap, UnGraphMap};
+use popgetter::CensusZone;
 
 use abstio::{CityName, MapName};
 use abstutil::{prettyprint_usize, serialized_size_bytes, MultiMap, Tags, Timer};
@@ -13,9 +14,9 @@ use raw_map::{RawBuilding, RawMap};
 use crate::{
     osm, AmenityType, Area, AreaID, AreaType, Building, BuildingID, BuildingType, CommonEndpoint,
     CompressedMovementID, ControlStopSign, ControlTrafficSignal, DirectedRoadID, Direction,
-    DrivingSide, Intersection, IntersectionControl, IntersectionID, IntersectionKind, Lane, LaneID,
-    LaneType, Map, MapConfig, MapEdits, Movement, MovementID, OffstreetParking, OriginalRoad,
-    ParkingLot, ParkingLotID, Path, PathConstraints, PathRequest, PathV2, Pathfinder,
+    DrivingSide, ExtraPOI, Intersection, IntersectionControl, IntersectionID, IntersectionKind,
+    Lane, LaneID, LaneType, Map, MapConfig, MapEdits, Movement, MovementID, OffstreetParking,
+    OriginalRoad, ParkingLot, ParkingLotID, Path, PathConstraints, PathRequest, PathV2, Pathfinder,
     PathfinderCaching, Position, Road, RoadID, RoutingParams, TransitRoute, TransitRouteID,
     TransitStop, TransitStopID, Turn, TurnID, TurnType, Zone,
 };
@@ -104,6 +105,16 @@ impl Map {
                     self.zones.len(),
                     serialized_size_bytes(&self.zones),
                 ),
+                (
+                    "census_zones",
+                    self.census_zones.len(),
+                    serialized_size_bytes(&self.census_zones),
+                ),
+                (
+                    "extra_pois",
+                    self.extra_pois.len(),
+                    serialized_size_bytes(&self.extra_pois),
+                ),
                 ("pathfinder", 1, serialized_size_bytes(&self.pathfinder)),
             ];
             costs.sort_by_key(|(_, _, bytes)| *bytes);
@@ -135,6 +146,8 @@ impl Map {
             areas: Vec::new(),
             parking_lots: Vec::new(),
             zones: Vec::new(),
+            census_zones: Vec::new(),
+            extra_pois: Vec::new(),
             boundary_polygon: Ring::must_new(vec![
                 Pt2D::new(0.0, 0.0),
                 Pt2D::new(1.0, 0.0),
@@ -255,6 +268,14 @@ impl Map {
 
     pub fn all_zones(&self) -> &Vec<Zone> {
         &self.zones
+    }
+
+    pub fn all_census_zones(&self) -> &Vec<(Polygon, CensusZone)> {
+        &self.census_zones
+    }
+
+    pub fn all_extra_pois(&self) -> &Vec<ExtraPOI> {
+        &self.extra_pois
     }
 
     pub fn maybe_get_r(&self, id: RoadID) -> Option<&Road> {

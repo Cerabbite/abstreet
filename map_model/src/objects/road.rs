@@ -102,7 +102,12 @@ impl DirectedRoadID {
             }
         }
         if found.len() != 1 {
-            panic!("must_get_sidewalk broken by {}", self);
+            panic!(
+                "must_get_sidewalk broken by {} ({}). Found lanes {:?}",
+                self,
+                map.get_r(self.road).orig_id,
+                found
+            );
         }
         found[0]
     }

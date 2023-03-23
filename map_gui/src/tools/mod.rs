@@ -54,7 +54,7 @@ mod updater;
 mod waypoints;
 
 // Update this ___before___ pushing the commit with "[rebuild] [release]".
-const NEXT_RELEASE: &str = "0.3.43";
+const NEXT_RELEASE: &str = "0.3.44";
 
 /// Returns the version of A/B Street to link to. When building for a release, this points to that
 /// new release. Otherwise it points to the current dev version.
@@ -112,6 +112,8 @@ pub fn nice_map_name(name: &MapName) -> &str {
         },
         "ca" => match (name.city.city.as_ref(), name.map.as_ref()) {
             ("montreal", "plateau") => "Montréal (Plateau)",
+            ("toronto", "dufferin") => "Toronto (Dufferin)",
+            ("toronto", "sw") => "Toronto (southwest)",
             _ => &name.map,
         },
         "ch" => match (name.city.city.as_ref(), name.map.as_ref()) {
@@ -182,11 +184,13 @@ pub fn nice_map_name(name: &MapName) -> &str {
             ("didcot", "center") => "Didcot (Harwell)",
             ("dunton_hills", "center") => "Dunton Hills",
             ("ebbsfleet", "center") => "Ebbsfleet (Dartford)",
+            ("edinburgh", "center") => "Edinburgh",
             ("exeter_red_cow_village", "center") => "Exeter Red Cow Village",
             ("glenrothes", "center") => "Glenrothes (Scotland)",
             ("great_kneighton", "center") => "Great Kneighton (Cambridge)",
             ("halsnhead", "center") => "Halsnead",
             ("hampton", "center") => "Hampton",
+            ("inverness", "center") => "Inverness",
             ("kergilliack", "center") => "Kergilliack",
             ("keighley", "center") => "Keighley",
             ("kidbrooke_village", "center") => "Kidbrooke Village",
@@ -242,8 +246,6 @@ pub fn nice_map_name(name: &MapName) -> &str {
         },
         "ir" => match (name.city.city.as_ref(), name.map.as_ref()) {
             ("tehran", "parliament") => "Tehran (near Parliament)",
-            // TODO I'm not naming the other 9 maps in Tehran, because I'm not sure yet the
-            // boundaries are the ones that a researcher needs.
             _ => &name.map,
         },
         "jp" => match (name.city.city.as_ref(), name.map.as_ref()) {

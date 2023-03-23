@@ -1,7 +1,7 @@
 use geom::{Speed, UnitFmt};
 use widgetry::mapspace::{World, WorldOutcome};
 use widgetry::tools::ColorLegend;
-use widgetry::{EventCtx, Text, Transition, Widget};
+use widgetry::{EventCtx, Text, Widget};
 
 use super::{EditOutcome, Obj};
 use crate::render::colors;
@@ -11,11 +11,12 @@ pub fn widget(ctx: &mut EventCtx) -> Widget {
     ColorLegend::categories(
         ctx,
         vec![
-            (colors::SPEED_LIMITS[0], "<= 10mph"),
-            (colors::SPEED_LIMITS[1], "<= 20mph"),
-            (colors::SPEED_LIMITS[2], "<= 30mph"),
-            (colors::SPEED_LIMITS[3], "> 30mph"),
+            (colors::SPEED_LIMITS[0], "0mph"),
+            (colors::SPEED_LIMITS[1], "10"),
+            (colors::SPEED_LIMITS[2], "20"),
+            (colors::SPEED_LIMITS[3], "30"),
         ],
+        ">30",
     )
 }
 
@@ -75,7 +76,7 @@ pub fn handle_world_outcome(
 
             logic::map_edits::modify_road(ctx, app, r, edits);
 
-            EditOutcome::Transition(Transition::Recreate)
+            EditOutcome::UpdateAll
         }
         _ => EditOutcome::Nothing,
     }
